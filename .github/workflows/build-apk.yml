@@ -21,9 +21,9 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          SDKMANAGER="${ANDROID_HOME}/cmdline-tools/latest/bin/sdkmanager"
-          yes | "$SDKMANAGER" "build-tools;35.0.0" >/dev/null
           BT="${ANDROID_HOME}/build-tools/35.0.0"
+          test -x "$BT/zipalign"
+          test -x "$BT/apksigner"
           keytool -genkeypair -v -keystore jjk-test-release.jks -storepass changeit -keypass changeit -alias jjkdiagnostics -keyalg RSA -keysize 2048 -validity 10000 -dname "CN=JJK Diagnostics, OU=JJK, O=JJK Diagnostics, L=Vrede, ST=Free State, C=ZA"
           "$BT/zipalign" -f -p 4 app/build/outputs/apk/release/app-release-unsigned.apk app/build/outputs/apk/release/jjk-diagnostics-aligned.apk
           "$BT/apksigner" sign --ks jjk-test-release.jks --ks-pass pass:changeit --key-pass pass:changeit --out app/build/outputs/apk/release/JJK-Diagnostics.apk app/build/outputs/apk/release/jjk-diagnostics-aligned.apk
