@@ -12,6 +12,7 @@ class MainActivity : Activity() {
     private lateinit var scanner: Tkd01Scanner
     private lateinit var status: TextView
     private lateinit var details: TextView
+    private lateinit var log: TextView
     private var foundDevice: BluetoothDevice? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -25,6 +26,8 @@ class MainActivity : Activity() {
         box.addView(status)
         details = TextView(this).apply { text="The app will first identify the TKD01 Bluetooth transport before sending vehicle commands."; setPadding(0,8,0,24) }
         box.addView(details)
+        log = TextView(this).apply { text="Diagnostic log:\n"; textSize=13f; setPadding(0,8,0,24) }
+        box.addView(log)
         box.addView(Button(this).apply { text="FIND TKD01"; setOnClickListener { scan() } })
         box.addView(Button(this).apply { text="CONNECT TO FOUND TKD01"; setOnClickListener { connect() } })
         box.addView(Button(this).apply { text="TRY CLASSIC BLUETOOTH (SPP)"; setOnClickListener { connectClassic() } })
@@ -38,17 +41,17 @@ class MainActivity : Activity() {
             foundDevice = device
             status.text = "TKD01 found: $name"
             details.text = "Address: ${device.address}\nTap CONNECT TO FOUND TKD01."
-        }, { status.text = it })
+        }, { status.text = it; log.append("\n" + it) })
     }
 
     private fun connect() {
         val device = foundDevice ?: run { status.text = "Find the TKD01 first"; return }
-        scanner.connect(device) { message -> runOnUiThread { status.text = message } }
+        scanner.connect(device) { message -> runOnUiThread { status.text = message; log.append("\n" + message) } }
     }
 
     private fun connectClassic() {
         val device = foundDevice ?: run { status.text = "Find the TKD01 first"; return }
-        scanner.connectClassic(device) { message -> runOnUiThread { status.text = message } }
+        scanner.connectClassic(device) { message -> runOnUiThread { status.text = message; log.append("\n" + message) } }
     }
 
     override fun onDestroy() { scanner.close(); super.onDestroy() }
