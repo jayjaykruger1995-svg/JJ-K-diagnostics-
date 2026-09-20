@@ -15,6 +15,7 @@ import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Handler
 import android.os.Looper
+import java.util.UUID
 
 class Tkd01Scanner(private val context: Context) {
     companion object { const val TARGET = "979869028107" }
