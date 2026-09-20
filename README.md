@@ -21,3 +21,5 @@ ThinkDiag documentation describes the TKD01 as a Bluetooth device and says gener
 
 ## Transport test update
 Builds now include a Classic Bluetooth SPP fallback/test for TKD01, alongside BLE detection. This is to identify whether 979869028107 exposes the vehicle data channel over Classic Bluetooth rather than BLE notifications.
+
+- Latest diagnostic build adds a persistent on-screen BLE log plus characteristic read/notification and MTU callbacks for TKD01 protocol identification.
