@@ -2,45 +2,48 @@ package com.jjkdiagnostics
 
 import android.Manifest
 import android.app.Activity
-import android.bluetooth.BluetoothAdapter
 import android.bluetooth.BluetoothDevice
-import android.content.BroadcastReceiver
-import android.content.Context
-import android.content.Intent
-import android.content.IntentFilter
+import android.os.Build
 import android.os.Bundle
 import android.widget.*
+import com.jjkdiagnostics.transport.Tkd01Scanner
 
 class MainActivity : Activity() {
-    private val target = "979869028107"
-    private var status: TextView? = null
-    private val receiver = object : BroadcastReceiver() {
-        override fun onReceive(context: Context?, intent: Intent?) {
-            if (intent?.action == BluetoothDevice.ACTION_FOUND) {
-                val d = intent.getParcelableExtra<BluetoothDevice>(BluetoothDevice.EXTRA_DEVICE)
-                if (d != null && (d.name == target || d.address == target)) status?.text = "TKD01 found: ${d.name ?: d.address}"
-            }
-        }
-    }
+    private lateinit var scanner: Tkd01Scanner
+    private lateinit var status: TextView
+    private lateinit var details: TextView
+    private var foundDevice: BluetoothDevice? = null
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        scanner = Tkd01Scanner(this)
+        val scroll = ScrollView(this)
         val box = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; setPadding(32,32,32,32) }
         box.addView(TextView(this).apply { text="JJK DIAGNOSTICS"; textSize=28f; setPadding(0,0,0,16) })
-        box.addView(TextView(this).apply { text="TKD01 • Bluetooth / Generic OBD-II"; textSize=18f })
-        status = TextView(this).apply { text="Ready — target: $target"; setPadding(0,24,0,24) }
+        box.addView(TextView(this).apply { text="TKD01 • Generic OBD-II foundation"; textSize=18f })
+        status = TextView(this).apply { text="Ready — target: ${Tkd01Scanner.TARGET}"; setPadding(0,24,0,16) }
         box.addView(status)
-        box.addView(Button(this).apply { text="FIND TKD01"; setOnClickListener { findTkd() } })
-        box.addView(Button(this).apply { text="CONNECT / TEST TKD01"; setOnClickListener { status?.text="TKD01 transport test will be added next." } })
-        setContentView(box)
-        if (android.os.Build.VERSION.SDK_INT >= 31) requestPermissions(arrayOf(Manifest.permission.BLUETOOTH_SCAN, Manifest.permission.BLUETOOTH_CONNECT), 10)
-        registerReceiver(receiver, IntentFilter(BluetoothDevice.ACTION_FOUND))
+        details = TextView(this).apply { text="The app will first identify the TKD01 Bluetooth transport before sending vehicle commands."; setPadding(0,8,0,24) }
+        box.addView(details)
+        box.addView(Button(this).apply { text="FIND TKD01"; setOnClickListener { scan() } })
+        box.addView(Button(this).apply { text="CONNECT TO FOUND TKD01"; setOnClickListener { connect() } })
+        box.addView(Button(this).apply { text="STOP SCAN"; setOnClickListener { scanner.stopScan(); status.text="Scan stopped" } })
+        scroll.addView(box); setContentView(scroll)
+        if (Build.VERSION.SDK_INT >= 31) requestPermissions(arrayOf(Manifest.permission.BLUETOOTH_SCAN, Manifest.permission.BLUETOOTH_CONNECT), 10)
     }
-    private fun findTkd() {
-        val adapter = BluetoothAdapter.getDefaultAdapter() ?: run { status?.text="Bluetooth not available"; return }
-        if (!adapter.isEnabled) { status?.text="Please switch Bluetooth on"; return }
-        status?.text="Scanning for $target…"
-        adapter.cancelDiscovery()
-        adapter.startDiscovery()
+
+    private fun scan() {
+        scanner.scan({ device, name ->
+            foundDevice = device
+            status.text = "TKD01 found: $name"
+            details.text = "Address: ${device.address}\nTap CONNECT TO FOUND TKD01."
+        }, { status.text = it })
     }
-    override fun onDestroy() { unregisterReceiver(receiver); super.onDestroy() }
+
+    private fun connect() {
+        val device = foundDevice ?: run { status.text = "Find the TKD01 first"; return }
+        scanner.connect(device) { message -> runOnUiThread { status.text = message } }
+    }
+
+    override fun onDestroy() { scanner.close(); super.onDestroy() }
 }
