@@ -5,14 +5,13 @@ android {
     compileSdk = 35
 
     defaultConfig {
-        applicationId = "com.jjkdiagnostics"
+        applicationId = "com.jjkdiagnostics.test"
         minSdk = 23
-        targetSdk = 34
-        versionCode = 2
-        versionName = "0.1.1"
+        targetSdk = 28
+        versionCode = 3
+        versionName = "0.1.2"
     }
 
-    // Keep the first test build as a normal signed debug APK so Android can install it directly.
     buildTypes {
         getByName("debug") {
             isMinifyEnabled = false
