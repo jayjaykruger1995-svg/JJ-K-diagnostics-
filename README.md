@@ -17,3 +17,7 @@ ThinkDiag documentation describes the TKD01 as a Bluetooth device and says gener
 ## Build trigger
 - Manual workflow trigger is enabled for the installable APK build.
 - A repository push to `main` also triggers the build.
+
+
+## Transport test update
+Builds now include a Classic Bluetooth SPP fallback/test for TKD01, alongside BLE detection. This is to identify whether 979869028107 exposes the vehicle data channel over Classic Bluetooth rather than BLE notifications.
