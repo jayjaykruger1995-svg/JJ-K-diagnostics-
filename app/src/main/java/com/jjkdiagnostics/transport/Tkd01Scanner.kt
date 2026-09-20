@@ -92,6 +92,26 @@ class Tkd01Scanner(private val context: Context) {
                     }
                 }
                 onStatus("TKD01 services discovered: \$count characteristics; write=\$writeCharacteristic != null, notify=\$notifyCharacteristic != null")
+                val notify = notifyCharacteristic
+                if (notify != null) {
+                    try {
+                        g.setCharacteristicNotification(notify, true)
+                        val descriptor = notify.getDescriptor(java.util.UUID.fromString("00002902-0000-1000-8000-00805f9b34fb"))
+                        if (descriptor != null) {
+                            @Suppress("DEPRECATION")
+                            descriptor.value = BluetoothGattDescriptor.ENABLE_NOTIFICATION_VALUE
+                            @Suppress("DEPRECATION")
+                            g.writeDescriptor(descriptor)
+                            onStatus("Notifications enabling…")
+                        } else {
+                            onStatus("No CCCD found; connection remains open")
+                        }
+                    } catch (e: Exception) {
+                        onStatus("Notification setup error: \${e.message}")
+                    }
+                } else {
+                    onStatus("No notify characteristic; connection remains open")
+                }
             }
         }
         gatt = if (Build.VERSION.SDK_INT >= 23) device.connectGatt(context, false, callback, BluetoothDevice.TRANSPORT_LE) else device.connectGatt(context, false, callback)
