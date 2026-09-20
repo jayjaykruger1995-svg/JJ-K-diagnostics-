@@ -64,14 +64,14 @@ class Tkd01Scanner(private val context: Context) {
     }
 
     private fun connectInternal(device: BluetoothDevice, onStatus: (String) -> Unit) {
-        onStatus("Connecting to TKD01…\nAttempt=\$connectAttempt Type=\$device.type Bond=\$device.bondState")
+        onStatus("Connecting to TKD01…\nAttempt=$connectAttempt Type=${device.type} Bond=${device.bondState}")
         val callback = object : BluetoothGattCallback() {
             override fun onConnectionStateChange(g: BluetoothGatt, status: Int, newState: Int) {
                 if (newState == BluetoothGatt.STATE_CONNECTED) {
                     onStatus("TKD01 connected; discovering services…")
                     g.discoverServices()
                 } else if (newState == BluetoothGatt.STATE_DISCONNECTED) {
-                    onStatus("TKD01 disconnected (GATT status=\$status, attempt=\$connectAttempt)")
+                    onStatus("TKD01 disconnected (GATT status=$status, attempt=$connectAttempt)")
                     if (connectAttempt < 3) {
                         connectAttempt++
                         try { g.close() } catch (_: Exception) {}
@@ -79,20 +79,28 @@ class Tkd01Scanner(private val context: Context) {
                     }
                 }
             }
+            override fun onDescriptorWrite(g: BluetoothGatt, descriptor: BluetoothGattDescriptor, status: Int) {
+                if (status == BluetoothGatt.GATT_SUCCESS) {
+                    onStatus("Notifications established — TKD01 BLE channel is open.")
+                } else {
+                    onStatus("Notification setup failed: GATT status=$status")
+                }
+            }
+
             override fun onServicesDiscovered(g: BluetoothGatt, status: Int) {
-                if (status != BluetoothGatt.GATT_SUCCESS) { onStatus("Service discovery failed: \$status"); return }
+                if (status != BluetoothGatt.GATT_SUCCESS) { onStatus("Service discovery failed: $status"); return }
                 var count = 0
                 for (service in g.services) {
-                    onStatus("Service: \$service.uuid")
+                    onStatus("Service: $service.uuid")
                     for (characteristic in service.characteristics) {
                         val p = characteristic.properties
                         if ((p and BluetoothGattCharacteristic.PROPERTY_WRITE) != 0 || (p and BluetoothGattCharacteristic.PROPERTY_WRITE_NO_RESPONSE) != 0) writeCharacteristic = characteristic
                         if ((p and BluetoothGattCharacteristic.PROPERTY_NOTIFY) != 0 || (p and BluetoothGattCharacteristic.PROPERTY_INDICATE) != 0) notifyCharacteristic = characteristic
-                        onStatus("Characteristic: \$characteristic.uuid props=\$p")
+                        onStatus("Characteristic: $characteristic.uuid props=$p")
                         count++
                     }
                 }
-                onStatus("TKD01 services discovered: \$count characteristics; write=\$writeCharacteristic != null, notify=\$notifyCharacteristic != null")
+                onStatus("TKD01 services discovered: $count characteristics; write=${writeCharacteristic != null}, notify=${notifyCharacteristic != null}")
                 val notify = notifyCharacteristic
                 if (notify != null) {
                     try {
@@ -103,7 +111,12 @@ class Tkd01Scanner(private val context: Context) {
                             descriptor.value = BluetoothGattDescriptor.ENABLE_NOTIFICATION_VALUE
                             @Suppress("DEPRECATION")
                             g.writeDescriptor(descriptor)
-                            onStatus("Notifications enabling…")
+                            onStatus("Notifications establishing…")
+                            mainHandler.postDelayed({
+                                if (gatt === g && notifyCharacteristic === notify) {
+                                    onStatus("Notification setup timed out — TKD01 accepted the connection but did not confirm the notification channel.")
+                                }
+                            }, 5000)
                         } else {
                             onStatus("No CCCD found; connection remains open")
                         }
