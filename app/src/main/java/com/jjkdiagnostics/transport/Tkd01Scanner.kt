@@ -25,6 +25,7 @@ class Tkd01Scanner(private val context: Context) {
     private var scanCallback: ScanCallback? = null
     private val mainHandler = Handler(Looper.getMainLooper())
     private var connectAttempt = 0
+    private var classicSocket: android.bluetooth.BluetoothSocket? = null
 
     fun scan(onFound: (BluetoothDevice, String) -> Unit, onStatus: (String) -> Unit) {
         if (Build.VERSION.SDK_INT >= 31 && context.checkSelfPermission(Manifest.permission.BLUETOOTH_SCAN) != PackageManager.PERMISSION_GRANTED) { onStatus("Bluetooth scan permission is required"); return }
@@ -129,6 +130,34 @@ class Tkd01Scanner(private val context: Context) {
             }
         }
         gatt = if (Build.VERSION.SDK_INT >= 23) device.connectGatt(context, false, callback, BluetoothDevice.TRANSPORT_LE) else device.connectGatt(context, false, callback)
+    }
+
+    fun connectClassic(device: BluetoothDevice, onStatus: (String) -> Unit) {
+        if (Build.VERSION.SDK_INT >= 31 && context.checkSelfPermission(Manifest.permission.BLUETOOTH_CONNECT) != PackageManager.PERMISSION_GRANTED) {
+            onStatus("Bluetooth connect permission is required"); return
+        }
+        stopScan()
+        onStatus("Trying TKD01 Classic Bluetooth (SPP)…")
+        Thread {
+            var socket: android.bluetooth.BluetoothSocket? = null
+            try {
+                socket = device.createRfcommSocketToServiceRecord(UUID.fromString("00001101-0000-1000-8000-00805F9B34FB"))
+                socket.connect()
+                classicSocket = socket
+                onStatus("TKD01 Classic Bluetooth connected — SPP channel is open.")
+                val input = socket.inputStream
+                val output = socket.outputStream
+                output.write("\r".toByteArray())
+                output.flush()
+                val buffer = ByteArray(256)
+                val read = input.read(buffer)
+                val response = if (read > 0) String(buffer, 0, read).replace("\r", " ").replace("\n", " ").trim() else "(no response)"
+                onStatus("TKD01 Classic test response: $response")
+            } catch (e: Exception) {
+                onStatus("TKD01 Classic Bluetooth failed: " + e.javaClass.simpleName + ": " + (e.message ?: "unknown error"))
+                try { socket?.close() } catch (_: Exception) {}
+            }
+        }.start()
     }
 
     fun gatt(): BluetoothGatt? = gatt
