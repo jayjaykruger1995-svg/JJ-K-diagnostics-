@@ -89,6 +89,21 @@ class Tkd01Scanner(private val context: Context) {
                 }
             }
 
+            override fun onCharacteristicRead(g: BluetoothGatt, characteristic: BluetoothGattCharacteristic, value: ByteArray, status: Int) {
+                val hex = value.joinToString(" ") { b -> "%02X".format(b) }
+                onStatus("READ " + characteristic.uuid + ": status=" + status + " bytes=" + value.size + " data=" + hex)
+            }
+
+            override fun onCharacteristicChanged(g: BluetoothGatt, characteristic: BluetoothGattCharacteristic, value: ByteArray) {
+                val hex = value.joinToString(" ") { b -> "%02X".format(b) }
+                val ascii = value.map { b -> if (b.toInt() in 32..126) b.toInt().toChar() else '.' }.joinToString("")
+                onStatus("NOTIFY " + characteristic.uuid + ": " + value.size + " bytes | " + hex + " | ASCII=" + ascii)
+            }
+
+            override fun onMtuChanged(g: BluetoothGatt, mtu: Int, status: Int) {
+                onStatus("MTU result: mtu=" + mtu + " status=" + status)
+            }
+
             override fun onServicesDiscovered(g: BluetoothGatt, status: Int) {
                 if (status != BluetoothGatt.GATT_SUCCESS) { onStatus("Service discovery failed: $status"); return }
                 var count = 0
@@ -102,7 +117,7 @@ class Tkd01Scanner(private val context: Context) {
                         count++
                     }
                 }
-                onStatus("TKD01 services discovered: $count characteristics; write=${writeCharacteristic != null}, notify=${notifyCharacteristic != null}")
+                onStatus("GATT map complete: $count characteristics; write=${writeCharacteristic != null}, notify=${notifyCharacteristic != null}")
                 val notify = notifyCharacteristic
                 if (notify != null) {
                     try {
