@@ -27,6 +27,7 @@ class MainActivity : Activity() {
         box.addView(details)
         box.addView(Button(this).apply { text="FIND TKD01"; setOnClickListener { scan() } })
         box.addView(Button(this).apply { text="CONNECT TO FOUND TKD01"; setOnClickListener { connect() } })
+        box.addView(Button(this).apply { text="TRY CLASSIC BLUETOOTH (SPP)"; setOnClickListener { connectClassic() } })
         box.addView(Button(this).apply { text="STOP SCAN"; setOnClickListener { scanner.stopScan(); status.text="Scan stopped" } })
         scroll.addView(box); setContentView(scroll)
         if (Build.VERSION.SDK_INT >= 31) requestPermissions(arrayOf(Manifest.permission.BLUETOOTH_SCAN, Manifest.permission.BLUETOOTH_CONNECT), 10)
@@ -43,6 +44,11 @@ class MainActivity : Activity() {
     private fun connect() {
         val device = foundDevice ?: run { status.text = "Find the TKD01 first"; return }
         scanner.connect(device) { message -> runOnUiThread { status.text = message } }
+    }
+
+    private fun connectClassic() {
+        val device = foundDevice ?: run { status.text = "Find the TKD01 first"; return }
+        scanner.connectClassic(device) { message -> runOnUiThread { status.text = message } }
     }
 
     override fun onDestroy() { scanner.close(); super.onDestroy() }
