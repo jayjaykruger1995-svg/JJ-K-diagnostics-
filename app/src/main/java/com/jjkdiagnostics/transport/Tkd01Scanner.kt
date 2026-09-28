@@ -176,8 +176,45 @@ class Tkd01Scanner(private val context: Context) {
         }.start()
     }
 
+    fun runReadOnlyDiscovery(onStatus: (String) -> Unit) {
+        val g = gatt
+        val write = writeCharacteristic
+        if (g == null || write == null) {
+            onStatus("PROBE: TKD01 is not connected or no writable channel is available")
+            return
+        }
+        val probes = listOf(
+            byteArrayOf(0x0D, 0x0A),
+            byteArrayOf(0x0D),
+            "ATI\r".toByteArray(Charsets.US_ASCII),
+            "ATZ\r".toByteArray(Charsets.US_ASCII),
+            "ATSP0\r".toByteArray(Charsets.US_ASCII)
+        )
+        Thread {
+            for ((index, data) in probes.withIndex()) {
+                try {
+                    val hex = data.joinToString(" ") { b -> "%02X".format(b) }
+                    onStatus("PROBE ${index + 1}/${probes.size} TX: $hex")
+                    @Suppress("DEPRECATION")
+                    write.value = data
+                    @Suppress("DEPRECATION")
+                    write.writeType = if ((write.properties and BluetoothGattCharacteristic.PROPERTY_WRITE_NO_RESPONSE) != 0)
+                        BluetoothGattCharacteristic.WRITE_TYPE_NO_RESPONSE
+                    else
+                        BluetoothGattCharacteristic.WRITE_TYPE_DEFAULT
+                    val ok = g.writeCharacteristic(write)
+                    onStatus("PROBE ${index + 1}/${probes.size} queued=$ok; waiting for notification…")
+                    Thread.sleep(900)
+                } catch (e: Exception) {
+                    onStatus("PROBE ${index + 1} error: ${e.javaClass.simpleName}: ${e.message ?: "unknown"}")
+                }
+            }
+            onStatus("READ-ONLY PROTOCOL DISCOVERY COMPLETE — no actuator/coding commands were sent.")
+        }.start()
+    }
+
     fun gatt(): BluetoothGatt? = gatt
     fun writeCharacteristic(): BluetoothGattCharacteristic? = writeCharacteristic
     fun notifyCharacteristic(): BluetoothGattCharacteristic? = notifyCharacteristic
-    fun close() { gatt?.close(); gatt = null }
+    fun close() { gatt?.close(); gatt = null; classicSocket?.close(); classicSocket = null }
 }
