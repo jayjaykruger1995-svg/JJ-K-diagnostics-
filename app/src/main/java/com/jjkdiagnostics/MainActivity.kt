@@ -21,15 +21,16 @@ class MainActivity : Activity() {
         val scroll = ScrollView(this)
         val box = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; setPadding(32,32,32,32) }
         box.addView(TextView(this).apply { text="JJK DIAGNOSTICS"; textSize=28f; setPadding(0,0,0,16) })
-        box.addView(TextView(this).apply { text="TKD01 • Generic OBD-II foundation"; textSize=18f })
+        box.addView(TextView(this).apply { text="TKD01 • Protocol Discovery V67"; textSize=18f })
         status = TextView(this).apply { text="Ready — target: ${Tkd01Scanner.TARGET}"; setPadding(0,24,0,16) }
         box.addView(status)
-        details = TextView(this).apply { text="The app will first identify the TKD01 Bluetooth transport before sending vehicle commands."; setPadding(0,8,0,24) }
+        details = TextView(this).apply { text="Build 67: confirmed BLE transport plus a controlled, read-only protocol discovery probe."; setPadding(0,8,0,24) }
         box.addView(details)
         log = TextView(this).apply { text="Diagnostic log:\n"; textSize=13f; setPadding(0,8,0,24) }
         box.addView(log)
         box.addView(Button(this).apply { text="FIND TKD01"; setOnClickListener { scan() } })
         box.addView(Button(this).apply { text="CONNECT TO FOUND TKD01"; setOnClickListener { connect() } })
+        box.addView(Button(this).apply { text="READ-ONLY PROTOCOL DISCOVERY"; setOnClickListener { scanner.runReadOnlyDiscovery { message -> runOnUiThread { log.append("\n" + message); status.text = message } } } })
         box.addView(Button(this).apply { text="TRY CLASSIC BLUETOOTH (SPP)"; setOnClickListener { connectClassic() } })
         box.addView(Button(this).apply { text="STOP SCAN"; setOnClickListener { scanner.stopScan(); status.text="Scan stopped" } })
         scroll.addView(box); setContentView(scroll)
